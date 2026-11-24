@@ -13027,6 +13027,7 @@
         <int name="imssms.sms_preferred_psi_uri_type_int" value="1" />
         <boolean name="imssms.sms_use_dialed_number_for_request_uri_bool" value="false" />
         <boolean name="ims.allow_sip_p_access_network_info_header_in_initial_register_bool" value="true" />
+        <string name="imssms.default_smsc_string" value="+9891100500" />
         <int-array name="imssms.sms_fallback_error_codes_int_array" num="5">
             <item value="403"/>
             <item value="404"/>
@@ -13042,6 +13043,7 @@
         <int name="imssms.sms_preferred_psi_uri_type_int" value="1" />
         <boolean name="imssms.sms_use_dialed_number_for_request_uri_bool" value="false" />
         <boolean name="ims.allow_sip_p_access_network_info_header_in_initial_register_bool" value="true" />
+        <string name="imssms.default_smsc_string" value="+989350001400" />
         <int-array name="imssms.sms_fallback_error_codes_int_array" num="5">
             <item value="403"/>
             <item value="404"/>

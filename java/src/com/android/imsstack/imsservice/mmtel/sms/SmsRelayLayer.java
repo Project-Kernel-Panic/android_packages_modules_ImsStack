@@ -24,8 +24,11 @@ import android.telephony.ims.stub.ImsSmsImplBase;
 
 import com.android.imsstack.base.AppContext;
 import com.android.imsstack.base.SystemServiceProxy.SmsManagerProxy;
+import android.text.TextUtils;
+
 import com.android.imsstack.enabler.mts.MtsController;
 import com.android.imsstack.imsservice.mmtel.ImsCallContext;
+import com.android.imsstack.imsservice.mmtel.ImsSmsImpl;
 import com.android.imsstack.util.ImsLog;
 import com.android.imsstack.util.ImsUtils;
 import com.android.internal.annotations.VisibleForTesting;
@@ -492,6 +495,9 @@ public class SmsRelayLayer {
                         mTokenStateTrackerMap.remove(token);
                     }
                 } else if (mtData.getMessageType() == SmsUtils.RP_DATA) {
+                    if (!TextUtils.isEmpty(mtData.getOrigAddr())) {
+                        ImsSmsImpl.recordLearnedSmsc(mCallContext.getSubId(), mtData.getOrigAddr());
+                    }
                     token = mToken.incrementAndGet() | MT_TOKEN_MASK;
                     synchronized (mLock) {
                         mMTTokenMRMap.put(token, messageRef);
