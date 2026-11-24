@@ -569,10 +569,10 @@ public class ConfigAgent implements ConfigInterface {
             String value = parser.getAttributeValue(i);
             switch (attribute) {
                 case "mcc":
-                    result = (id == null) || value.equals(id.getMcc());
+                    result = (id == null) || matchOnNumericCode(value, id.getMcc());
                     break;
                 case "mnc":
-                    result = (id == null) || value.equals(id.getMnc());
+                    result = (id == null) || matchOnNumericCode(value, id.getMnc());
                     break;
                 case "gid1":
                     result = (id == null) || value.equalsIgnoreCase(id.getGid1());
@@ -597,6 +597,22 @@ public class ConfigAgent implements ConfigInterface {
             }
         }
         return true;
+    }
+
+    private static boolean matchOnNumericCode(String xmlValue, String simValue) {
+        if (xmlValue == null || simValue == null) {
+            return false;
+        }
+        if (xmlValue.equals(simValue)) {
+            return true;
+        }
+        try {
+            // aapt2 compiles all-digit XML attributes in res/xml as integers,
+            // stripping leading zeros (e.g. "06" -> "6").
+            return Integer.parseInt(xmlValue) == Integer.parseInt(simValue);
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     private static boolean matchOnCarrierId(String xmlCid, SimCarrierId id) {
