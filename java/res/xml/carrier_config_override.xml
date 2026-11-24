@@ -2,7 +2,7 @@
 <!-- This is a place for minor or overridden changes to internal carrier configuration values.
      The format and filtering rules are the same as those in carrier_config*.xml files.
      This file is read after any specific configuration file from the assets folder,
-     so it must use explicit filters for MCC ad MNC if that is desired. -->
+     so it must use explicit filters for MCC and MNC or Carrier ID if that is desired. -->
 <carrier_config_list>
     <!-- South Korea: LG U+ (MCC 450, MNC 06 / Carrier ID 1892) -->
     <carrier_config mcc="450" mnc="06">
@@ -50,5 +50,218 @@
         <int name="imssms.sms_preferred_psi_uri_type_int" value="1" />
         <int name="imsvoice.policy_of_local_numbers_int" value="2" />
         <boolean name="imssms.sms_use_dialed_number_for_request_uri_bool" value="false" />
+    </carrier_config>
+
+    <!-- India: Reliance Jio (Carrier ID 2018 / MCC 405 MNC 840, 854..874) -->
+    <carrier_config cid="2018">
+        <int name="ims.request_uri_type_int" value="0" />
+        <int name="imssms.sms_preferred_psi_uri_type_int" value="0" />
+        <boolean name="imssms.sms_use_dialed_number_for_request_uri_bool" value="true" />
+        <boolean name="ims.allow_sip_p_access_network_info_header_in_initial_register_bool" value="true" />
+        <int-array name="imssms.sms_fallback_error_codes_int_array" num="5">
+            <item value="403"/>
+            <item value="404"/>
+            <item value="500"/>
+            <item value="503"/>
+            <item value="504"/>
+        </int-array>
+    </carrier_config>
+
+    <!-- India: Bharti Airtel (Carrier ID 10000 / MCC 404, 405) -->
+    <carrier_config cid="10000">
+        <int name="ims.request_uri_type_int" value="1" />
+        <boolean name="imssms.sms_use_dialed_number_for_request_uri_bool" value="true" />
+        <boolean name="ims.allow_sip_p_access_network_info_header_in_initial_register_bool" value="true" />
+        <int-array name="imssms.sms_fallback_error_codes_int_array" num="5">
+            <item value="403"/>
+            <item value="404"/>
+            <item value="500"/>
+            <item value="503"/>
+            <item value="504"/>
+        </int-array>
+    </carrier_config>
+
+    <!-- India: Vodafone Idea / Vi (Carrier ID 10011 / 10012) -->
+    <carrier_config cid="10011">
+        <int name="ims.request_uri_type_int" value="1" />
+        <boolean name="imssms.sms_use_dialed_number_for_request_uri_bool" value="true" />
+        <boolean name="ims.allow_sip_p_access_network_info_header_in_initial_register_bool" value="true" />
+        <int-array name="imssms.sms_fallback_error_codes_int_array" num="5">
+            <item value="403"/>
+            <item value="404"/>
+            <item value="500"/>
+            <item value="503"/>
+            <item value="504"/>
+        </int-array>
+    </carrier_config>
+
+    <!-- India: generic MCC 404 fallback -->
+    <carrier_config mcc="404">
+        <boolean name="imssms.sms_use_dialed_number_for_request_uri_bool" value="true" />
+        <boolean name="ims.allow_sip_p_access_network_info_header_in_initial_register_bool" value="true" />
+        <int-array name="imssms.sms_fallback_error_codes_int_array" num="5">
+            <item value="403"/>
+            <item value="404"/>
+            <item value="500"/>
+            <item value="503"/>
+            <item value="504"/>
+        </int-array>
+    </carrier_config>
+
+    <!-- India: generic MCC 405 fallback -->
+    <carrier_config mcc="405">
+        <boolean name="imssms.sms_use_dialed_number_for_request_uri_bool" value="true" />
+        <boolean name="ims.allow_sip_p_access_network_info_header_in_initial_register_bool" value="true" />
+        <int-array name="imssms.sms_fallback_error_codes_int_array" num="5">
+            <item value="403"/>
+            <item value="404"/>
+            <item value="500"/>
+            <item value="503"/>
+            <item value="504"/>
+        </int-array>
+    </carrier_config>
+
+    <!-- Vietnam: Viettel (MCC 452, MNC 04 / Carrier ID 1989) -->
+    <carrier_config mcc="452" mnc="04">
+        <int name="ims.request_uri_type_int" value="1" />
+        <boolean name="imssms.sms_use_dialed_number_for_request_uri_bool" value="true" />
+        <boolean name="ims.allow_sip_p_access_network_info_header_in_initial_register_bool" value="true" />
+        <int-array name="imssms.sms_fallback_error_codes_int_array" num="5">
+            <item value="403"/>
+            <item value="404"/>
+            <item value="500"/>
+            <item value="503"/>
+            <item value="504"/>
+        </int-array>
+    </carrier_config>
+
+    <!-- Vietnam: Vinaphone (MCC 452, MNC 02 / Carrier ID 1990) -->
+    <carrier_config mcc="452" mnc="02">
+        <int name="ims.request_uri_type_int" value="1" />
+        <boolean name="imssms.sms_use_dialed_number_for_request_uri_bool" value="true" />
+        <boolean name="ims.allow_sip_p_access_network_info_header_in_initial_register_bool" value="true" />
+        <int-array name="imssms.sms_fallback_error_codes_int_array" num="5">
+            <item value="403"/>
+            <item value="404"/>
+            <item value="500"/>
+            <item value="503"/>
+            <item value="504"/>
+        </int-array>
+    </carrier_config>
+
+    <!-- Vietnam: Mobifone (MCC 452, MNC 01 / Carrier ID 1991) -->
+    <carrier_config mcc="452" mnc="01">
+        <int name="ims.request_uri_type_int" value="1" />
+        <boolean name="imssms.sms_use_dialed_number_for_request_uri_bool" value="true" />
+        <boolean name="ims.allow_sip_p_access_network_info_header_in_initial_register_bool" value="true" />
+        <int-array name="imssms.sms_fallback_error_codes_int_array" num="5">
+            <item value="403"/>
+            <item value="404"/>
+            <item value="500"/>
+            <item value="503"/>
+            <item value="504"/>
+        </int-array>
+    </carrier_config>
+
+    <!-- Vietnam: generic fallback (MCC 452) -->
+    <carrier_config mcc="452">
+        <int name="ims.request_uri_type_int" value="1" />
+        <boolean name="imssms.sms_use_dialed_number_for_request_uri_bool" value="true" />
+        <boolean name="ims.allow_sip_p_access_network_info_header_in_initial_register_bool" value="true" />
+        <int-array name="imssms.sms_fallback_error_codes_int_array" num="5">
+            <item value="403"/>
+            <item value="404"/>
+            <item value="500"/>
+            <item value="503"/>
+            <item value="504"/>
+        </int-array>
+    </carrier_config>
+
+    <!-- Singapore: Singtel (MCC 525, MNC 01 / Carrier ID 31) -->
+    <carrier_config mcc="525" mnc="01">
+        <string name="ims.ims_user_agent_string">#MODEL#/#BUILD# SingTel</string>
+        <boolean name="imssms.sms_use_dialed_number_for_request_uri_bool" value="false" />
+        <int-array name="imssms.sms_fallback_error_codes_int_array" num="5">
+            <item value="403"/>
+            <item value="404"/>
+            <item value="500"/>
+            <item value="503"/>
+            <item value="504"/>
+        </int-array>
+    </carrier_config>
+
+    <!-- Singapore: generic fallback (MCC 525: Starhub, M1) -->
+    <carrier_config mcc="525">
+        <boolean name="imssms.sms_use_dialed_number_for_request_uri_bool" value="true" />
+        <int-array name="imssms.sms_fallback_error_codes_int_array" num="5">
+            <item value="403"/>
+            <item value="404"/>
+            <item value="500"/>
+            <item value="503"/>
+            <item value="504"/>
+        </int-array>
+    </carrier_config>
+
+    <!-- Croatia: A1 Croatia (MCC 219, MNC 10 / Carrier ID 1530) -->
+    <carrier_config mcc="219" mnc="10">
+        <boolean name="ims.unsubscribe_registration_event_package_bool" value="true" />
+        <boolean name="ims.allow_sip_p_access_network_info_header_in_initial_register_bool" value="true" />
+        <boolean name="imssms.sms_use_dialed_number_for_request_uri_bool" value="true" />
+        <int-array name="imssms.sms_fallback_error_codes_int_array" num="5">
+            <item value="403"/>
+            <item value="404"/>
+            <item value="500"/>
+            <item value="503"/>
+            <item value="504"/>
+        </int-array>
+    </carrier_config>
+
+    <!-- Austria: 3 Austria (MCC 232, MNC 05 / Carrier ID 1344) -->
+    <carrier_config mcc="232" mnc="05">
+        <boolean name="imssms.sms_use_dialed_number_for_request_uri_bool" value="true" />
+        <int-array name="imssms.sms_fallback_error_codes_int_array" num="5">
+            <item value="403"/>
+            <item value="404"/>
+            <item value="500"/>
+            <item value="503"/>
+            <item value="504"/>
+        </int-array>
+    </carrier_config>
+
+    <!-- Turkey: Vodafone Turkey (MCC 286, MNC 02 / Carrier ID 1736) -->
+    <carrier_config mcc="286" mnc="02">
+        <boolean name="imssms.sms_use_dialed_number_for_request_uri_bool" value="true" />
+        <int-array name="imssms.sms_fallback_error_codes_int_array" num="5">
+            <item value="403"/>
+            <item value="404"/>
+            <item value="500"/>
+            <item value="503"/>
+            <item value="504"/>
+        </int-array>
+    </carrier_config>
+
+    <!-- Kazakhstan: Tele2 Kazakhstan (MCC 401, MNC 77 / Carrier ID 1986) -->
+    <carrier_config mcc="401" mnc="77">
+        <boolean name="ims.gruu_enabled_bool" value="false" />
+        <boolean name="imssms.sms_use_dialed_number_for_request_uri_bool" value="true" />
+        <int-array name="imssms.sms_fallback_error_codes_int_array" num="5">
+            <item value="403"/>
+            <item value="404"/>
+            <item value="500"/>
+            <item value="503"/>
+            <item value="504"/>
+        </int-array>
+    </carrier_config>
+
+    <!-- France: SFR France (MCC 208, MNC 10 / Carrier ID 27) -->
+    <carrier_config mcc="208" mnc="10">
+        <boolean name="imssms.sms_use_dialed_number_for_request_uri_bool" value="true" />
+        <int-array name="imssms.sms_fallback_error_codes_int_array" num="5">
+            <item value="403"/>
+            <item value="404"/>
+            <item value="500"/>
+            <item value="503"/>
+            <item value="504"/>
+        </int-array>
     </carrier_config>
 </carrier_config_list>

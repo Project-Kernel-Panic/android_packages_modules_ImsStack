@@ -19,6 +19,8 @@ package com.android.imsstack.imsservice.mmtel;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.telephony.PhoneNumberUtils;
+import android.telephony.TelephonyManager;
+import com.android.imsstack.base.TelephonyManagerProxy;
 import android.telephony.ims.stub.ImsSmsImplBase;
 import com.android.imsstack.util.ImsUtils;
 
@@ -66,6 +68,27 @@ public final class ImsSmsImpl extends ImsSmsImplBase {
      */
     public void dispose() {
         clear();
+    }
+
+    private boolean isKoreanCarrier() {
+        try {
+            TelephonyManagerProxy tmp =
+                    AppContext.getTelephonyManagerProxy(mCallContext.getSubId());
+            if (tmp != null) {
+                String simOp = tmp.getSimOperator();
+                if (simOp != null && simOp.startsWith("450")) {
+                    return true;
+                }
+            }
+            TelephonyManager tm = AppContext.getInstance().getSystemService(TelephonyManager.class);
+            if (tm != null) {
+                String simOp = tm.getSimOperator(mCallContext.getSubId());
+                if (simOp != null && simOp.startsWith("450")) {
+                    return true;
+                }
+            }
+        } catch (Exception ignored) {}
+        return false;
     }
 
     private void ensureSmsTL() {
@@ -186,8 +209,13 @@ public final class ImsSmsImpl extends ImsSmsImplBase {
                     }
                 }
                 if (smsc == null || smsc.length() == 0 || "00".equals(smsc)) {
-                    log("Smsc is null/empty, defaulting to 0791280101010000 (+821010100000)");
-                    smsc = "0791280101010000";
+                    if (isKoreanCarrier()) {
+                        log("sendSms: Korean carrier (MCC 450) - defaulting smsc to 0791280101010000 (+821010100000)");
+                        smsc = "0791280101010000";
+                    } else {
+                        log("sendSms: International carrier - defaulting smsc to 00");
+                        smsc = "00";
+                    }
                 }
             }
             int result = smsTL.sendMoTPdu(token, smsFormat, messageRef, smsc, pdu, isRetry);
