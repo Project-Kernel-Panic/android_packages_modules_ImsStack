@@ -90,8 +90,7 @@ public final class CarrierInfo {
 
         mSimCarrierIds.put(slotId, newCid);
 
-        return !(oldCid.getCarrierId() == newCid.getCarrierId()
-                && oldCid.getSpecificCarrierId() == newCid.getSpecificCarrierId());
+        return !oldCid.equals(newCid);
     }
 
     /**
