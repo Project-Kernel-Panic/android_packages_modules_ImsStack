@@ -4,4 +4,35 @@
      This file is read after any specific configuration file from the assets folder,
      so it must use explicit filters for MCC ad MNC if that is desired. -->
 <carrier_config_list>
+    <!-- South Korea: LG U+ (MCC 450, MNC 06 / Carrier ID 1892) -->
+    <carrier_config mcc="450" mnc="06">
+        <boolean name="ims.allow_sip_p_access_network_info_header_in_initial_register_bool" value="true" />
+        <boolean name="ims.allow_algorithm_param_in_sip_authorization_header_bool" value="true" />
+        <int name="ims.registration_contact_user_info_part_int" value="1" />
+        <string name="ims.ims_user_agent_string">TTA-VoLTE/3.0 #MODEL#/#BUILD# Device-Type/Android_Phone LGU</string>
+    </carrier_config>
+
+    <!-- South Korea: SK Telecom (MCC 450, MNC 05 / Carrier ID 1890) -->
+    <carrier_config mcc="450" mnc="05">
+        <boolean name="ims.allow_sip_p_access_network_info_header_in_initial_register_bool" value="true" />
+        <boolean name="ims.allow_algorithm_param_in_sip_authorization_header_bool" value="true" />
+        <int name="ims.registration_contact_user_info_part_int" value="1" />
+        <string name="ims.ims_user_agent_string">TTA-VoLTE/3.0 #MODEL#/#BUILD# Device-Type/Android_Phone SKT</string>
+    </carrier_config>
+
+    <!-- South Korea: KT (MCC 450, MNC 08 / Carrier ID 1891) -->
+    <carrier_config mcc="450" mnc="08">
+        <boolean name="ims.allow_sip_p_access_network_info_header_in_initial_register_bool" value="true" />
+        <boolean name="ims.allow_algorithm_param_in_sip_authorization_header_bool" value="true" />
+        <int name="ims.registration_contact_user_info_part_int" value="1" />
+        <string name="ims.ims_user_agent_string">TTA-VoLTE/3.0 #MODEL#/#BUILD# Device-Type/Android_Phone KT</string>
+    </carrier_config>
+
+    <!-- South Korea: generic fallback for any other MCC 450 operator -->
+    <carrier_config mcc="450">
+        <boolean name="ims.allow_sip_p_access_network_info_header_in_initial_register_bool" value="true" />
+        <boolean name="ims.allow_algorithm_param_in_sip_authorization_header_bool" value="true" />
+        <int name="ims.registration_contact_user_info_part_int" value="1" />
+        <string name="ims.ims_user_agent_string">TTA-VoLTE/3.0 #MODEL#/#BUILD# Device-Type/Android_Phone OMD</string>
+    </carrier_config>
 </carrier_config_list>
