@@ -24,6 +24,9 @@ import com.android.imsstack.util.ImsUtils;
 
 import androidx.annotation.NonNull;
 
+import com.android.imsstack.base.TelephonyManagerProxy;
+import com.android.imsstack.core.agents.AgentFactory;
+import com.android.imsstack.core.agents.SimInterface;
 import com.android.imsstack.base.AppContext;
 import com.android.imsstack.base.SystemServiceProxy.SmsManagerProxy;
 import com.android.imsstack.imsservice.mmtel.sms.SmsTransferLayer;
@@ -68,6 +71,29 @@ public final class ImsSmsImpl extends ImsSmsImplBase {
         clear();
     }
 
+        private void fetchSmscInBackground() {
+        new Thread(() -> {
+            try {
+                if (mScAddress != null && mScAddress.length() > 0) {
+                    return;
+                }
+                SimInterface sim = AgentFactory.getInstance().getAgent(SimInterface.class, mCallContext.getSlotId());
+                if (sim != null) {
+                    String smsc = sim.getSmscAddress();
+                    if (smsc != null && smsc.length() > 0) {
+                        synchronized (mLock) {
+                            mScAddress = smsc;
+                            log("fetchSmscInBackground: Cached SMSC from SIM: "
+                                    + ImsLog.hiddenString(mScAddress));
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                loge("fetchSmscInBackground failed: " + e.getMessage());
+            }
+        }, "ImsSms-FetchSmsc").start();
+    }
+
     private void ensureSmsTL() {
         synchronized (mLock) {
             if (mSmsTL == null) {
@@ -83,6 +109,7 @@ public final class ImsSmsImpl extends ImsSmsImplBase {
      */
     public void init() {
         ensureSmsTL();
+        fetchSmscInBackground();
         onReady();
     }
 
@@ -173,21 +200,46 @@ public final class ImsSmsImpl extends ImsSmsImplBase {
 
             }
 
-            if (smsc == null || smsc.length() == 0) {
+            if (smsc == null || smsc.length() == 0 || "00".equals(smsc)) {
+                if (mScAddress == null || mScAddress.length() == 0) {
+                    try {
+                        SimInterface sim = AgentFactory.getInstance().getAgent(SimInterface.class, mCallContext.getSlotId());
+                        if (sim != null) {
+                            mScAddress = sim.getSmscAddress();
+                        }
+                    } catch (Exception e) {
+                        loge("Failed to get SMSC from SIM: " + e.getMessage());
+                    }
+                }
                 if (mScAddress != null && mScAddress.length() > 0) {
                     try {
                         byte[] scBytes =
                                 PhoneNumberUtils.networkPortionToCalledPartyBCDWithLength(mScAddress);
                         if (scBytes != null && scBytes.length > 0) {
                             smsc = ImsUtils.bytesToHexString(scBytes);
+                            log("sendSms: using SMSC from SIM: " + ImsLog.hiddenString(mScAddress));
                         }
                     } catch (Exception e) {
                         loge("Failed to encode mScAddress: " + e.getMessage());
                     }
                 }
                 if (smsc == null || smsc.length() == 0 || "00".equals(smsc)) {
-                    log("Smsc is null/empty, defaulting to 0791280101010000 (+821010100000)");
-                    smsc = "0791280101010000";
+                    String simOperator = "";
+                    try {
+                        TelephonyManagerProxy tmp =
+                                AppContext.getTelephonyManagerProxy(mCallContext.getSubId());
+                        if (tmp != null) {
+                            simOperator = tmp.getSimOperator();
+                        }
+                    } catch (Exception ignored) {}
+
+                    if (simOperator != null && simOperator.startsWith("450")) {
+                        log("sendSms: MCC 450 (Korea) - defaulting to 0791280101010000 (+821010100000)");
+                        smsc = "0791280101010000";
+                    } else {
+                        log("sendSms: No SMSC found - using empty RP-Destination-Address (00)");
+                        smsc = "00";
+                    }
                 }
             }
             int result = smsTL.sendMoTPdu(token, smsFormat, messageRef, smsc, pdu, isRetry);

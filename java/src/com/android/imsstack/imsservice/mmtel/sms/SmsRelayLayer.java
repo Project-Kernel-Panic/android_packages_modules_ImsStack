@@ -189,11 +189,7 @@ public class SmsRelayLayer {
                 //fetch PSI Value
                 targetAddress = getPSIValue();
                 if (DBG) log("PSI = " + ImsLog.hiddenString(targetAddress));
-                // If smsc is null or empty, default to 0791280101010000 (+821010100000)
-                if (smsc == null || smsc.length() == 0 || "00".equals(smsc)) {
-                    logi("Smsc is null or empty, defaulting to 0791280101010000");
-                    smsc = "0791280101010000";
-                }
+
                 //As per b/232048441 if PSI is null, targetAddress is set to smsc
                 if (targetAddress == null || targetAddress.length() == 0) {
                     logi("PSI is null");

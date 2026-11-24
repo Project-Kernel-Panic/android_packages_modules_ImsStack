@@ -946,7 +946,12 @@
     <boolean name="imssms.sms_use_dialed_number_for_request_uri_bool" value="false"/>
     <int-array name="imssms.sms_generic_error_codes_int_array" num="0">
     </int-array>
-    <int-array name="imssms.sms_fallback_error_codes_int_array" num="0">
+    <int-array name="imssms.sms_fallback_error_codes_int_array" num="5">
+        <item value="403"/>
+        <item value="404"/>
+        <item value="500"/>
+        <item value="503"/>
+        <item value="504"/>
     </int-array>
     <int-array name="imssms.sms_smma_generic_error_codes_int_array" num="0">
     </int-array>

@@ -135,6 +135,7 @@ public final class SimAgent implements SimInterface {
     private int mSimCardState = Sim.STATE_UNKNOWN;
     private int mSimState = Sim.STATE_UNKNOWN;
     private byte[] mUst = new byte[0]; // Cached USIM service table
+    private String mSmscAddress = null;
     private final UsatAgent mUsatAgent;
     private final Set<Sim.Listener> mListeners = new CopyOnWriteArraySet<>();
 
@@ -256,11 +257,19 @@ public final class SimAgent implements SimInterface {
 
     @Override
     public String getSmscAddress() {
+        if (mSmscAddress != null && mSmscAddress.length() > 0) {
+            return mSmscAddress;
+        }
+
         SmsManagerProxy smp = getSmsManagerProxy(getSlotId(), getSubId());
 
         try {
             if (smp != null) {
-                return smp.getSmscAddress();
+                String smsc = smp.getSmscAddress();
+                if (smsc != null && smsc.length() > 0) {
+                    mSmscAddress = smsc.replace("\"", "").replace(",", " ").trim().split("\\s+")[0];
+                    return mSmscAddress;
+                }
             }
         } catch (Exception e) {
             logw(this, "getSmscAddress: " + e);
@@ -465,6 +474,7 @@ public final class SimAgent implements SimInterface {
 
     private void clearSimRecords() {
         mUst = new byte[0];
+        mSmscAddress = null;
     }
 
     private void loadSimRecords() {
@@ -473,6 +483,19 @@ public final class SimAgent implements SimInterface {
         if (tmp != null) {
             mUst = tmp.getSimServiceTable(Sim.APP_TYPE_USIM);
             logi(this, "SimRecords: ust=" + ImsUtils.bytesToHexString(mUst));
+        }
+
+        try {
+            SmsManagerProxy smp = getSmsManagerProxy(getSlotId(), getSubId());
+            if (smp != null) {
+                String smsc = smp.getSmscAddress();
+                if (smsc != null && smsc.length() > 0) {
+                    mSmscAddress = smsc.replace("\"", "").replace(",", " ").trim().split("\\s+")[0];
+                    logi(this, "SimRecords: smsc=" + ImsLog.hiddenString(mSmscAddress));
+                }
+            }
+        } catch (Exception e) {
+            logw(this, "loadSimRecords smsc failed: " + e.getMessage());
         }
     }
 
