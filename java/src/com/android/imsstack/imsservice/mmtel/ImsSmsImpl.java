@@ -18,7 +18,9 @@ package com.android.imsstack.imsservice.mmtel;
 
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
+import android.telephony.PhoneNumberUtils;
 import android.telephony.ims.stub.ImsSmsImplBase;
+import com.android.imsstack.util.ImsUtils;
 
 import androidx.annotation.NonNull;
 
@@ -66,15 +68,21 @@ public final class ImsSmsImpl extends ImsSmsImplBase {
         clear();
     }
 
+    private void ensureSmsTL() {
+        synchronized (mLock) {
+            if (mSmsTL == null) {
+                log("ensureSmsTL: initializing SmsTransferLayer");
+                mSmsTL = new SmsTransferLayer(mCallContext);
+                mSmsTL.setListener(mSmsTLListener);
+            }
+        }
+    }
+
     /**
      * Initialises the objects created by this Class
      */
     public void init() {
-        if (mSmsTL == null) {
-            log("init");
-            mSmsTL = new SmsTransferLayer(mCallContext);
-            mSmsTL.setListener(mSmsTLListener);
-        }
+        ensureSmsTL();
         onReady();
     }
 
@@ -102,10 +110,8 @@ public final class ImsSmsImpl extends ImsSmsImplBase {
             throw new RuntimeException("Sms Not Ready!");
         }
         try {
-            if (mScAddress == null) {
-                SmsManagerProxy smp =
-                        AppContext.getInstance().getSystemServiceProxy(SmsManagerProxy.class);
-                mScAddress = smp.getSmscAddress();
+            if (mScAddress == null || mScAddress.length() == 0) {
+                mScAddress = "00";
             }
             log("SMMA smsc = " + mScAddress);
             result = mSmsTL.sendMemoryAvailabilityNotification(token, mScAddress);
@@ -122,6 +128,7 @@ public final class ImsSmsImpl extends ImsSmsImplBase {
                                 + " isRetry = " + isRetry);
         int smsFormat = SmsUtils.FORMAT_INT_INVALID;
 
+        ensureSmsTL();
         SmsTransferLayer smsTL;
         synchronized (mLock) {
             if (!mReady || mSmsTL == null) {
@@ -167,14 +174,21 @@ public final class ImsSmsImpl extends ImsSmsImplBase {
             }
 
             if (smsc == null || smsc.length() == 0) {
-                loge("Smsc is null");
-                onSendSmsResultError(
-                        token,
-                        messageRef,
-                        SEND_STATUS_ERROR,
-                        SmsManager.RESULT_INVALID_SMSC_ADDRESS,
-                        RESULT_NO_NETWORK_ERROR);
-                return;
+                if (mScAddress != null && mScAddress.length() > 0) {
+                    try {
+                        byte[] scBytes =
+                                PhoneNumberUtils.networkPortionToCalledPartyBCDWithLength(mScAddress);
+                        if (scBytes != null && scBytes.length > 0) {
+                            smsc = ImsUtils.bytesToHexString(scBytes);
+                        }
+                    } catch (Exception e) {
+                        loge("Failed to encode mScAddress: " + e.getMessage());
+                    }
+                }
+                if (smsc == null || smsc.length() == 0 || "00".equals(smsc)) {
+                    log("Smsc is null/empty, defaulting to 0791280101010000 (+821010100000)");
+                    smsc = "0791280101010000";
+                }
             }
             int result = smsTL.sendMoTPdu(token, smsFormat, messageRef, smsc, pdu, isRetry);
             if (result == SmsUtils.SMS_RESULT_INVALID_SMSC_ADDRESS) {
@@ -250,6 +264,7 @@ public final class ImsSmsImpl extends ImsSmsImplBase {
 
     @Override
     public void onReady() {
+        ensureSmsTL();
         synchronized (mLock) {
             mReady = true;
             log("Sms Ready");

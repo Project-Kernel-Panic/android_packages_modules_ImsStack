@@ -713,13 +713,10 @@ IMS_BOOL MtsMessageController::ConstructSendMessage(IN IMessage* piMessage,
         }
     }
 
-    // If configured for e911 SMS to use E-PDN and contact Header to be added for Emergency SMS.
-    if (eServiceType == MtsServiceType::EMERGENCY)
+    // Contact Header to be added for SMS per RFC 3428 / 3GPP TS 24.341
+    if (AddContactHeader(piMessage, eServiceType) == IMS_FAILURE)
     {
-        if (AddContactHeader(piMessage, eServiceType) == IMS_FAILURE)
-        {
-            IMS_TRACE_E(0, "Failed to add the Contact header", 0, 0, 0);
-        }
+        IMS_TRACE_E(0, "Failed to add the Contact header", 0, 0, 0);
     }
 
     AddGeolocationPidf(piMessage, bEmergencyNumber, eServiceType);

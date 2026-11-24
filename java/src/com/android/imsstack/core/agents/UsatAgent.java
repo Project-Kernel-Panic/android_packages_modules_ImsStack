@@ -1174,6 +1174,11 @@ public class UsatAgent extends Handler implements UsatInterface {
      * @return true if the operation is successfully done, false otherwise.
      */
     private static boolean writeAddress(ByteArrayOutputStream buffer, String address) {
+        if (address == null || address.isEmpty()) {
+            buffer.write(TAG_ADDRESS);
+            writeLength(buffer, 0);
+            return true;
+        }
         return writeDataAsEfAdn(buffer, TAG_ADDRESS, address);
     }
 

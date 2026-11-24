@@ -189,10 +189,10 @@ public class SmsRelayLayer {
                 //fetch PSI Value
                 targetAddress = getPSIValue();
                 if (DBG) log("PSI = " + ImsLog.hiddenString(targetAddress));
-                //return if smsc is null as it is a must to construct RP-Destination address
-                if (smsc == null || smsc.length() == 0) {
-                    loge("Smsc is null");
-                    return SmsUtils.SMS_RESULT_INVALID_SMSC_ADDRESS;
+                // If smsc is null or empty, default to 0791280101010000 (+821010100000)
+                if (smsc == null || smsc.length() == 0 || "00".equals(smsc)) {
+                    logi("Smsc is null or empty, defaulting to 0791280101010000");
+                    smsc = "0791280101010000";
                 }
                 //As per b/232048441 if PSI is null, targetAddress is set to smsc
                 if (targetAddress == null || targetAddress.length() == 0) {
@@ -283,7 +283,13 @@ public class SmsRelayLayer {
     }
 
     private String decodeSmsc(String smsc) {
+        if (smsc == null || smsc.length() == 0) {
+            return null;
+        }
         byte[] targetAddrBytes = ImsUtils.hexStringToBytes(smsc);
+        if (targetAddrBytes == null || targetAddrBytes.length < 2 || targetAddrBytes[0] < 2) {
+            return null;
+        }
         int len = targetAddrBytes[0];
         return PhoneNumberUtils.calledPartyBCDToString(targetAddrBytes, 1,
                             len, PhoneNumberUtils.BCD_EXTENDED_TYPE_CALLED_PARTY);

@@ -296,11 +296,15 @@ public class ImsCallApp extends ImsApp {
      * @return Returns the object of ImsSmsImpl
      */
     public ImsSmsImpl getSmsInterface() {
-        if (mSms == null) {
-            mSms = new ImsSmsImpl(mCallContext);
+        synchronized (mLock) {
+            if (mSms == null) {
+                mSms = new ImsSmsImpl(mCallContext);
+                if (mInitCompleted) {
+                    mSms.init();
+                }
+            }
+            return mSms;
         }
-
-        return mSms;
     }
 
     /**

@@ -208,7 +208,7 @@ public class MtsController {
         }
 
         String encodedPdu = Base64.encodeToString(smsData, Base64.DEFAULT);
-        if (encodedPdu == null || psiSmsc == null) {
+        if (encodedPdu == null || (psiSmsc == null && dialedNumber == null)) {
             processNotifySendMoSmsError(smsFormat, seqId, MO_ERROR_RETRY);
             return false;
         }
@@ -220,14 +220,9 @@ public class MtsController {
             return false;
         }
 
-        String targetAddress = psiSmsc;
-        if (mUseDialedNumber) {
-            if (dialedNumber == null) {
-                processNotifySendMoSmsError(smsFormat, seqId, MO_ERROR_RETRY);
-                return false;
-            } else {
-                targetAddress = dialedNumber;
-            }
+        String targetAddress = (psiSmsc != null && psiSmsc.length() > 0) ? psiSmsc : dialedNumber;
+        if (mUseDialedNumber && dialedNumber != null && dialedNumber.length() > 0) {
+            targetAddress = dialedNumber;
         }
 
         TelephonyInterface telephony = AgentFactory.getInstance().getAgent(
