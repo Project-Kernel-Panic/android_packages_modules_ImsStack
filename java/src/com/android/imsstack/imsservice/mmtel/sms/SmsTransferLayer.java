@@ -240,9 +240,11 @@ public class SmsTransferLayer {
                 IDcNetWatcher dcnw = mCallContext.getDcNetWatcher();
                 int networkType =  TelephonyManager.NETWORK_TYPE_UNKNOWN;
                 byte[] smscAddrBytes = ImsUtils.hexStringToBytes(smsc);
-                int len = smscAddrBytes[0];
-                String rpAddress = PhoneNumberUtils.calledPartyBCDToString(smscAddrBytes, 1,
-                                    len, PhoneNumberUtils.BCD_EXTENDED_TYPE_CALLED_PARTY);
+                int len = (smscAddrBytes != null && smscAddrBytes.length > 0) ? smscAddrBytes[0] : 0;
+                String rpAddress = (smscAddrBytes != null && len >= 2)
+                        ? PhoneNumberUtils.calledPartyBCDToString(smscAddrBytes, 1,
+                                len, PhoneNumberUtils.BCD_EXTENDED_TYPE_CALLED_PARTY)
+                        : "";
                 if (DBG) log("RpAddress = " + ImsLog.hiddenString(rpAddress));
                 if (dcnw != null) networkType = dcnw.getNetworkType();
                 mUsatBasedSms.mMoSmsCCmd = usat.createMoSmsControlCommand(

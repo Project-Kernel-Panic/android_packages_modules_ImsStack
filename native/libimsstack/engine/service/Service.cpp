@@ -328,7 +328,7 @@ PUBLIC VIRTUAL ISipClientConnection* Service::CreateConnection(IN const SipAddre
     // INVITE, NOTIFY, OPTIONS, SUBSCRIBE, UPDATE, REGISTER, REFER, PUBLISH
     if (objMethod.Equals(SipMethod::INVITE) || objMethod.Equals(SipMethod::OPTIONS) ||
             objMethod.Equals(SipMethod::SUBSCRIBE) || objMethod.Equals(SipMethod::REFER) ||
-            objMethod.Equals(SipMethod::PUBLISH))
+            objMethod.Equals(SipMethod::PUBLISH) || objMethod.Equals(SipMethod::MESSAGE))
     {
         AString strContact;
         IMS_BOOL bIsContactGruu = IMS_FALSE;
@@ -1069,6 +1069,7 @@ ISipHeader* Service::GetContactHeader(IN IMS_BOOL bPrivacy /*= IMS_FALSE*/,
     switch (nSipMethod)
     {
         case SipMethod::INVITE:     // FALL-THROUGH
+        case SipMethod::MESSAGE:    // FALL-THROUGH
         case SipMethod::SUBSCRIBE:  // FALL-THROUGH
         case SipMethod::REFER:      // FALL-THROUGH
         case SipMethod::NOTIFY:     // FALL-THROUGH
