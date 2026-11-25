@@ -16,30 +16,52 @@
 
 package com.android.imsstack.imsservice.mmtel;
 
+import android.net.Uri;
+import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
-import android.telephony.PhoneNumberUtils;
+import android.telephony.TelephonyManager;
 import android.telephony.ims.stub.ImsSmsImplBase;
-import com.android.imsstack.util.ImsUtils;
+import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
 
 import com.android.imsstack.base.AppContext;
 import com.android.imsstack.base.SystemServiceProxy.SmsManagerProxy;
+import com.android.imsstack.base.TelephonyManagerProxy;
+import com.android.imsstack.core.agents.AgentFactory;
+import com.android.imsstack.core.agents.ConfigInterface;
+import com.android.imsstack.core.config.CarrierConfig;
 import com.android.imsstack.imsservice.mmtel.sms.SmsTransferLayer;
 import com.android.imsstack.imsservice.mmtel.sms.SmsUtils;
 import com.android.imsstack.util.ImsLog;
+import com.android.imsstack.util.ImsUtils;
 import com.android.imsstack.util.IndentingPrintWriter;
 import com.android.internal.annotations.VisibleForTesting;
+
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Implements ImsSmsImplBase to provide Sms over Ims feature.
  */
 public final class ImsSmsImpl extends ImsSmsImplBase {
     private static final String TAG = "[GII-ImsSmsImpl]";
+    private static final ConcurrentHashMap<Integer, String> sLearnedSmscBySubId =
+            new ConcurrentHashMap<>();
+    private static final ExecutorService sSmscExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "ImsSmsSmscLoader");
+        t.setDaemon(true);
+        return t;
+    });
+
     private final ImsCallContext mCallContext;
     private SmsTransferLayer mSmsTL = null;
-    private String mScAddress = null;
+    private volatile String mScAddress = null;
+    private volatile String mPsiNumber = null;
+    private final AtomicBoolean mScRefreshInFlight = new AtomicBoolean(false);
     private final SmsTLListenerProxy mSmsTLListener = new SmsTLListenerProxy();
     private boolean mReady = false;
     private final Object mLock = new Object();
@@ -66,6 +88,185 @@ public final class ImsSmsImpl extends ImsSmsImplBase {
      */
     public void dispose() {
         clear();
+    }
+
+    /**
+     * Records a carrier SMSC address observed in incoming MT RP-DATA RP-OA for fallback MO use.
+     */
+    public static void recordLearnedSmsc(int subId, String origAddr) {
+        String cleaned = sanitizeSmscNumber(origAddr);
+        if (subId >= 0 && cleaned != null && cleaned.length() >= 3) {
+            sLearnedSmscBySubId.put(subId, cleaned);
+        }
+    }
+
+    private static String sanitizeSmscNumber(String raw) {
+        if (TextUtils.isEmpty(raw)) {
+            return null;
+        }
+        String s = raw.trim();
+        int commaIdx = s.indexOf(',');
+        if (commaIdx > 0) {
+            s = s.substring(0, commaIdx).trim();
+        }
+        if (s.length() >= 2 && s.charAt(0) == 34 && s.charAt(s.length() - 1) == 34) {
+            s = s.substring(1, s.length() - 1).trim();
+        }
+        if (TextUtils.isEmpty(s) || "00".equals(s)) {
+            return null;
+        }
+        return s;
+    }
+
+    private static String extractNumberFromUri(Uri uri) {
+        if (uri == null || Uri.EMPTY.equals(uri)) {
+            return null;
+        }
+        String scheme = uri.getScheme();
+        String ssp = uri.getSchemeSpecificPart();
+        if (TextUtils.isEmpty(ssp)) {
+            return null;
+        }
+        if ("tel".equalsIgnoreCase(scheme)) {
+            int semiIdx = ssp.indexOf(';');
+            return sanitizeSmscNumber(semiIdx > 0 ? ssp.substring(0, semiIdx) : ssp);
+        }
+        if ("sip".equalsIgnoreCase(scheme) || "sips".equalsIgnoreCase(scheme)) {
+            int atIdx = ssp.indexOf('@');
+            String user = atIdx > 0 ? ssp.substring(0, atIdx) : ssp;
+            int semiIdx = user.indexOf(';');
+            user = semiIdx > 0 ? user.substring(0, semiIdx) : user;
+            if (!TextUtils.isEmpty(user) && (user.startsWith("+") || TextUtils.isDigitsOnly(user))) {
+                return sanitizeSmscNumber(user);
+            }
+        }
+        return null;
+    }
+
+    private static String encodeSmscBcd(String smscNumber) {
+        String cleaned = sanitizeSmscNumber(smscNumber);
+        if (cleaned == null) {
+            return null;
+        }
+        try {
+            byte[] scBytes = PhoneNumberUtils.networkPortionToCalledPartyBCDWithLength(cleaned);
+            if (scBytes != null && scBytes.length >= 2 && (scBytes[0] & 0xff) >= 1) {
+                return ImsUtils.bytesToHexString(scBytes);
+            }
+        } catch (Exception e) {
+            loge("Failed to encode SMSC " + cleaned + ": " + e.getMessage());
+        }
+        return null;
+    }
+
+    private void refreshScAddressAsync() {
+        if (mCallContext == null || !mScRefreshInFlight.compareAndSet(false, true)) {
+            return;
+        }
+        try {
+            AppContext.getInstance();
+        } catch (IllegalStateException e) {
+            mScRefreshInFlight.set(false);
+            return;
+        }
+        final int subId = mCallContext.getSubId();
+        sSmscExecutor.execute(() -> {
+            try {
+                if (subId >= 0) {
+                    SmsManagerProxy smp = AppContext.getSmsManagerProxy(subId);
+                    String simSmsc = sanitizeSmscNumber(smp.getSmscAddress());
+                    if (simSmsc != null) {
+                        mScAddress = simSmsc;
+                        log("refreshScAddressAsync: cached SIM SMSC");
+                    }
+                    String psiNum = extractNumberFromUri(smp.getSmscIdentity());
+                    if (psiNum != null) {
+                        mPsiNumber = psiNum;
+                        log("refreshScAddressAsync: cached PSI SMSC");
+                    }
+                }
+            } catch (Exception e) {
+                log("refreshScAddressAsync: " + e.getMessage());
+            } finally {
+                mScRefreshInFlight.set(false);
+            }
+        });
+    }
+
+    private String getConfiguredDefaultSmsc() {
+        try {
+            if (mCallContext == null) {
+                return null;
+            }
+            ConfigInterface config = AgentFactory.getInstance().getAgent(
+                    ConfigInterface.class, mCallContext.getSlotId());
+            if (config == null) {
+                return null;
+            }
+            CarrierConfig cc = config.getCarrierConfig();
+            if (cc == null) {
+                return null;
+            }
+            return sanitizeSmscNumber(cc.getString(CarrierConfig.ImsSms.KEY_SMS_DEFAULT_SMSC_STRING));
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private String resolveSmsc(String smsc) {
+        if (!TextUtils.isEmpty(smsc) && !"00".equals(smsc)) {
+            return smsc;
+        }
+        String encoded = encodeSmscBcd(mScAddress);
+        if (encoded != null) {
+            return encoded;
+        }
+        if (isKoreanCarrier()) {
+            log("sendSms: Korean carrier (MCC 450) - defaulting smsc to 0791280101010000 (+821010100000)");
+            return "0791280101010000";
+        }
+        int subId = (mCallContext != null) ? mCallContext.getSubId() : -1;
+        if (subId >= 0) {
+            encoded = encodeSmscBcd(sLearnedSmscBySubId.get(subId));
+            if (encoded != null) {
+                log("sendSms: using network-learned MT SMSC");
+                return encoded;
+            }
+        }
+        encoded = encodeSmscBcd(getConfiguredDefaultSmsc());
+        if (encoded != null) {
+            log("sendSms: using carrier default SMSC");
+            return encoded;
+        }
+        encoded = encodeSmscBcd(mPsiNumber);
+        if (encoded != null) {
+            log("sendSms: using PSI SMSC");
+            return encoded;
+        }
+        refreshScAddressAsync();
+        log("sendSms: International carrier - defaulting smsc to 00");
+        return "00";
+    }
+
+    private boolean isKoreanCarrier() {
+        try {
+            TelephonyManagerProxy tmp =
+                    AppContext.getTelephonyManagerProxy(mCallContext.getSubId());
+            if (tmp != null) {
+                String simOp = tmp.getSimOperator();
+                if (simOp != null && simOp.startsWith("450")) {
+                    return true;
+                }
+            }
+            TelephonyManager tm = AppContext.getInstance().getSystemService(TelephonyManager.class);
+            if (tm != null) {
+                String simOp = tm.getSimOperator(mCallContext.getSubId());
+                if (simOp != null && simOp.startsWith("450")) {
+                    return true;
+                }
+            }
+        } catch (Exception ignored) {}
+        return false;
     }
 
     private void ensureSmsTL() {
@@ -110,11 +311,9 @@ public final class ImsSmsImpl extends ImsSmsImplBase {
             throw new RuntimeException("Sms Not Ready!");
         }
         try {
-            if (mScAddress == null || mScAddress.length() == 0) {
-                mScAddress = "00";
-            }
-            log("SMMA smsc = " + mScAddress);
-            result = mSmsTL.sendMemoryAvailabilityNotification(token, mScAddress);
+            String smsc = resolveSmsc(null);
+            log("SMMA smsc = " + smsc);
+            result = mSmsTL.sendMemoryAvailabilityNotification(token, smsc);
         } catch (RuntimeException e) {
             loge("onMemoryAvailable :: Can not send smma: " + e.getMessage());
         }
@@ -173,22 +372,8 @@ public final class ImsSmsImpl extends ImsSmsImplBase {
 
             }
 
-            if (smsc == null || smsc.length() == 0) {
-                if (mScAddress != null && mScAddress.length() > 0) {
-                    try {
-                        byte[] scBytes =
-                                PhoneNumberUtils.networkPortionToCalledPartyBCDWithLength(mScAddress);
-                        if (scBytes != null && scBytes.length > 0) {
-                            smsc = ImsUtils.bytesToHexString(scBytes);
-                        }
-                    } catch (Exception e) {
-                        loge("Failed to encode mScAddress: " + e.getMessage());
-                    }
-                }
-                if (smsc == null || smsc.length() == 0 || "00".equals(smsc)) {
-                    log("Smsc is null/empty, defaulting to 0791280101010000 (+821010100000)");
-                    smsc = "0791280101010000";
-                }
+            if (smsc == null || smsc.length() == 0 || "00".equals(smsc)) {
+                smsc = resolveSmsc(smsc);
             }
             int result = smsTL.sendMoTPdu(token, smsFormat, messageRef, smsc, pdu, isRetry);
             if (result == SmsUtils.SMS_RESULT_INVALID_SMSC_ADDRESS) {
@@ -269,6 +454,7 @@ public final class ImsSmsImpl extends ImsSmsImplBase {
             mReady = true;
             log("Sms Ready");
         }
+        refreshScAddressAsync();
     }
 
     /**

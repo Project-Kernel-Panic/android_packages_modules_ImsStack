@@ -18,12 +18,17 @@ package com.android.imsstack.imsservice.mmtel.sms;
 
 import android.net.Uri;
 import android.telephony.PhoneNumberUtils;
+import android.telephony.TelephonyManager;
+import com.android.imsstack.base.TelephonyManagerProxy;
 import android.telephony.ims.stub.ImsSmsImplBase;
 
 import com.android.imsstack.base.AppContext;
 import com.android.imsstack.base.SystemServiceProxy.SmsManagerProxy;
+import android.text.TextUtils;
+
 import com.android.imsstack.enabler.mts.MtsController;
 import com.android.imsstack.imsservice.mmtel.ImsCallContext;
+import com.android.imsstack.imsservice.mmtel.ImsSmsImpl;
 import com.android.imsstack.util.ImsLog;
 import com.android.imsstack.util.ImsUtils;
 import com.android.internal.annotations.VisibleForTesting;
@@ -189,10 +194,15 @@ public class SmsRelayLayer {
                 //fetch PSI Value
                 targetAddress = getPSIValue();
                 if (DBG) log("PSI = " + ImsLog.hiddenString(targetAddress));
-                // If smsc is null or empty, default to 0791280101010000 (+821010100000)
+                // If smsc is null or empty, default to 0791280101010000 (+821010100000) for Korean carriers
                 if (smsc == null || smsc.length() == 0 || "00".equals(smsc)) {
-                    logi("Smsc is null or empty, defaulting to 0791280101010000");
-                    smsc = "0791280101010000";
+                    if (isKoreanCarrier()) {
+                        logi("Korean carrier (MCC 450): defaulting smsc to 0791280101010000");
+                        smsc = "0791280101010000";
+                    } else {
+                        logi("International carrier: defaulting smsc to 00");
+                        smsc = "00";
+                    }
                 }
                 //As per b/232048441 if PSI is null, targetAddress is set to smsc
                 if (targetAddress == null || targetAddress.length() == 0) {
@@ -280,6 +290,27 @@ public class SmsRelayLayer {
             loge("SendRPMessage Failed: " + e.getMessage());
             return SmsUtils.SMSRL_RESULT_EXCEPTION;
         }
+    }
+
+    private boolean isKoreanCarrier() {
+        try {
+            TelephonyManagerProxy tmp =
+                    AppContext.getTelephonyManagerProxy(mCallContext.getSubId());
+            if (tmp != null) {
+                String simOp = tmp.getSimOperator();
+                if (simOp != null && simOp.startsWith("450")) {
+                    return true;
+                }
+            }
+            TelephonyManager tm = AppContext.getInstance().getSystemService(TelephonyManager.class);
+            if (tm != null) {
+                String simOp = tm.getSimOperator(mCallContext.getSubId());
+                if (simOp != null && simOp.startsWith("450")) {
+                    return true;
+                }
+            }
+        } catch (Exception ignored) {}
+        return false;
     }
 
     private String decodeSmsc(String smsc) {
@@ -464,6 +495,9 @@ public class SmsRelayLayer {
                         mTokenStateTrackerMap.remove(token);
                     }
                 } else if (mtData.getMessageType() == SmsUtils.RP_DATA) {
+                    if (!TextUtils.isEmpty(mtData.getOrigAddr())) {
+                        ImsSmsImpl.recordLearnedSmsc(mCallContext.getSubId(), mtData.getOrigAddr());
+                    }
                     token = mToken.incrementAndGet() | MT_TOKEN_MASK;
                     synchronized (mLock) {
                         mMTTokenMRMap.put(token, messageRef);
