@@ -55,7 +55,7 @@ cc_library_static {
     ],
     include_dirs: [
         "system/libbase/include",
-        "external/zlib",
+        "external/zlib-ng",
     ],
     local_include_dirs: [
         "include",
