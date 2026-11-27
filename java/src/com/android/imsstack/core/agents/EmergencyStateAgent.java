@@ -115,7 +115,7 @@ public class EmergencyStateAgent implements EmergencyStateInterface {
     }
 
     private void notifyEmergencyModeChanged(
-            @TelephonyManager.DomainSelectionEmergencyType int type, boolean entered) {
+            int type, boolean entered) {
         for (EmergencyStateListener l : mListeners) {
             l.onEmergencyModeChanged(type, entered);
         }
@@ -180,8 +180,6 @@ public class EmergencyStateAgent implements EmergencyStateInterface {
     @SuppressLint("HandlerLeak")
     private final class EmergencyModeListener extends Handler {
         private final int mSubId;
-        private final DomainSelectionEmergencyModeListener mDomainSelectionListener =
-                new DomainSelectionEmergencyModeListener();
         private final EmergencyCallbackModeListener mEmergencyCallbackModeListener =
                 new EmergencyCallbackModeListener();
 
@@ -201,51 +199,12 @@ public class EmergencyStateAgent implements EmergencyStateInterface {
 
         public void registerCallbacks() {
             TelephonyManagerProxy tmp = getTelephonyManagerProxy(getSubId());
-            tmp.registerTelephonyCallback(this::post, mDomainSelectionListener);
             tmp.registerTelephonyCallback(this::post, mEmergencyCallbackModeListener);
         }
 
         public void unregisterCallbacks() {
             TelephonyManagerProxy tmp = getTelephonyManagerProxy(getSubId());
-            tmp.unregisterTelephonyCallback(mDomainSelectionListener);
             tmp.unregisterTelephonyCallback(mEmergencyCallbackModeListener);
-        }
-
-        private final class DomainSelectionEmergencyModeListener extends TelephonyCallback
-                implements TelephonyCallback.DomainSelectionEmergencyModeListener {
-            @Override
-            public void onDomainSelectionEmergencyModeEntered(
-                    @TelephonyManager.DomainSelectionEmergencyType int type,
-                    int slotIndex, int subscriptionId) {
-                if (slotIndex != mSlotId) {
-                    return;
-                }
-                if (isInEmergencyMode(type)) {
-                    ImsLog.d(this, mSlotId, "Same ECM state: type=" + type);
-                    return;
-                }
-                ImsLog.i(this, mSlotId, "onDomainSelectionEmergencyModeEntered: type=" + type
-                        + ", subId=" + subscriptionId);
-                mEmergencyModes.add(type);
-                notifyEmergencyModeChanged(type, true);
-            }
-
-            @Override
-            public void onDomainSelectionEmergencyModeExited(
-                    @TelephonyManager.DomainSelectionEmergencyType int type,
-                    int slotIndex, int subscriptionId) {
-                if (slotIndex != mSlotId) {
-                    return;
-                }
-                if (!isInEmergencyMode(type)) {
-                    ImsLog.d(this, mSlotId, "Same ECM state: type=" + type);
-                    return;
-                }
-                ImsLog.i(this, mSlotId, "onDomainSelectionEmergencyModeExited: type=" + type
-                        + ", subId=" + subscriptionId);
-                mEmergencyModes.remove(type);
-                notifyEmergencyModeChanged(type, false);
-            }
         }
 
         private final class EmergencyCallbackModeListener extends TelephonyCallback implements
